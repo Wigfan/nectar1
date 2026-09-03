@@ -1,431 +1,490 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Néctar — Mermeladas artesanales</title>
-  <meta name="theme-color" content="#FAFAF9">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='26' fill='%23E8944A'/></svg>">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Néctar — Mermeladas Artesanales</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- Tipografías: Fraunces (display, carácter artesanal) + Instrument Sans (cuerpo) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-
-  <!-- Tailwind CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            display: ['Fraunces', 'serif'],
-            sans: ['"Instrument Sans"', 'sans-serif'],
-          }
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['"Playfair Display"', 'serif'],
+                        body: ['"DM Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        cream: '#FDFBF7',
+                        warm: {
+                            50: '#FAF8F5',
+                            100: '#F5F1EB',
+                            200: '#E8E4DE',
+                            300: '#D4CFC7',
+                            400: '#8A8580',
+                            500: '#6B6660',
+                            600: '#4A4640',
+                            700: '#2D2A26',
+                        }
+                    }
+                }
+            }
         }
-      }
-    }
-  </script>
+    </script>
 
-  <!-- model-viewer (en <head>, según lo pedido) -->
-  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+    <style>
+        /* Reset de tap highlight en móviles */
+        * { -webkit-tap-highlight-color: transparent; }
 
-  <style>
-    html { scroll-behavior: smooth; }
-    body { -webkit-tap-highlight-color: transparent; }
-    ::selection { background: #FBE7CE; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: #FDFBF7;
+            overscroll-behavior: none;
+        }
 
-    /* ---- Variables de color del sabor activo (las actualiza JS) ---- */
-    #view-detail { --accent: #B85C2E; --accent-mid: #E8944A; --accent-soft: #FBE7CE; }
-    .chip       { background: var(--accent-soft); color: var(--accent); }
-    .plate      { background: var(--accent-soft); transition: background .7s ease; }
-    .step-no    { color: var(--accent-mid); font-family: 'Fraunces', serif; }
-    .hl         { box-shadow: inset 0 -0.45em 0 var(--accent-soft); transition: box-shadow .7s ease; }
+        /* === Animación de flotación del frasco === */
+        @keyframes flotar {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-14px); }
+        }
+        .jar-flotante {
+            animation: flotar 3s ease-in-out infinite;
+        }
 
-    /* ---- Botones de sabor ---- */
-    .flavor-btn { transition: background-color .3s ease, transform .15s ease; }
-    .flavor-btn:active { transform: scale(.985); }
-    .flavor-btn:focus-visible { outline: 2px solid var(--btn-accent); outline-offset: -2px; }
-    .flavor-btn[data-flavor="durazno"]:hover,
-    .flavor-btn[data-flavor="durazno"]:focus-visible  { background: #FDF2E2; }
-    .flavor-btn[data-flavor="manzana"]:hover,
-    .flavor-btn[data-flavor="manzana"]:focus-visible  { background: #F3F6E4; }
-    .flavor-btn[data-flavor="frutilla"]:hover,
-    .flavor-btn[data-flavor="frutilla"]:focus-visible { background: #FBECEA; }
-    .flavor-btn .go { color: #D6D3D1; transition: transform .35s cubic-bezier(.2,.8,.2,1), color .35s; }
-    .flavor-btn:hover .go, .flavor-btn:focus-visible .go { color: var(--btn-accent); transform: translateX(5px); }
+        /* === Transiciones entre vistas === */
+        .vista {
+            transition: opacity 0.35s ease, transform 0.35s ease;
+        }
+        .vista-oculta {
+            opacity: 0;
+            transform: translateY(18px);
+            pointer-events: none;
+            position: absolute;
+            top: 0; left: 0; right: 0;
+        }
+        .vista-visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            position: relative;
+        }
 
-    /* ---- Transición entre vistas ---- */
-    .view-enter { animation: viewIn .45s cubic-bezier(.2,.8,.2,1) both; }
-    @keyframes viewIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+        /* === Animación de entrada escalonada (Landing) === */
+        @keyframes aparecer {
+            from { opacity: 0; transform: translateY(22px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .anim-entrada {
+            opacity: 0;
+            animation: aparecer 0.55s ease forwards;
+        }
+        .ret-1 { animation-delay: 0.08s; }
+        .ret-2 { animation-delay: 0.2s; }
+        .ret-3 { animation-delay: 0.36s; }
+        .ret-4 { animation-delay: 0.52s; }
+        .ret-5 { animation-delay: 0.66s; }
 
-    /* ---- Acordeones (details/summary) ---- */
-    summary { list-style: none; cursor: pointer; }
-    summary::-webkit-details-marker { display: none; }
-    details .chev { transition: transform .3s ease; }
-    details[open] .chev { transform: rotate(180deg); }
-    .acc-body { animation: accIn .38s ease both; }
-    @keyframes accIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+        /* === Acordeones con <details>/<summary> === */
+        details { border-bottom: 1px solid #EBE7E1; }
+        details:last-child { border-bottom: none; }
 
-    /* ---- Detalles vivos ---- */
-    .dot-brand { animation: breathe 3.4s ease-in-out infinite; }
-    .dot-brand:nth-child(2) { animation-delay: .45s; }
-    .dot-brand:nth-child(3) { animation-delay: .9s; }
-    @keyframes breathe { 0%,100% { transform: scale(1); opacity: .8; } 50% { transform: scale(1.4); opacity: 1; } }
+        details summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 17px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 500;
+            font-size: 0.938rem;
+            color: #2D2A26;
+            transition: color 0.25s ease;
+            user-select: none;
+        }
+        details summary::-webkit-details-marker { display: none; }
 
-    /* ---- Toasts ---- */
-    .toast { animation: toastIn .3s ease both; }
-    .toast.out { animation: toastOut .3s ease both; }
-    @keyframes toastIn  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-    @keyframes toastOut { to { opacity: 0; transform: translateY(12px); } }
-  </style>
+        details summary::after {
+            content: '+';
+            font-size: 22px;
+            font-weight: 300;
+            line-height: 1;
+            color: var(--accento, #8A8580);
+            transition: transform 0.3s ease, color 0.25s ease;
+        }
+        details[open] summary::after {
+            transform: rotate(45deg);
+            color: var(--accento, #2D2A26);
+        }
+        details[open] summary {
+            color: var(--accento, #2D2A26);
+        }
+
+        /* === Efecto presión en botones === */
+        .btn-sabor {
+            transition: transform 0.15s ease, box-shadow 0.2s ease;
+        }
+        .btn-sabor:active {
+            transform: scale(0.97);
+        }
+
+        /* === Tabla nutricional === */
+        .tabla-nutri { width: 100%; border-collapse: collapse; }
+        .tabla-nutri tr:not(:last-child) { border-bottom: 1px solid #F0ECE5; }
+        .tabla-nutri td { padding: 9px 0; font-size: 0.875rem; }
+        .tabla-nutri td:last-child  { text-align: right; font-weight: 500; color: #2D2A26; }
+        .tabla-nutri td:first-child { color: #8A8580; }
+
+        /* === Respeto a prefers-reduced-motion === */
+        @media (prefers-reduced-motion: reduce) {
+            .jar-flotante { animation: none; }
+            .anim-entrada  { animation: none; opacity: 1; }
+            .vista         { transition: none; }
+        }
+
+        html { scroll-behavior: smooth; }
+    </style>
 </head>
 
-<body class="bg-stone-50 text-stone-800 font-sans antialiased">
+<body class="bg-cream min-h-screen text-warm-700 font-body overflow-x-hidden">
 
-  <!-- ============ Símbolos SVG (frutas ilustradas + iconos) ============ -->
-  <svg aria-hidden="true" style="display:none">
-    <symbol id="fruit-durazno" viewBox="0 0 64 64">
-      <path d="M32 16C24 7 7 10 5.5 27 4.3 42 18 57 32 56c14 1 27.7-14 26.5-29C57 10 40 7 32 16Z" fill="#F2A65A"/>
-      <path d="M32 17c-2 12-2 27 0 39" stroke="#DE8440" stroke-width="2.6" stroke-linecap="round" fill="none"/>
-      <path d="M32 15c0-4 0-7 .8-10" stroke="#7A5C3E" stroke-width="2.6" stroke-linecap="round" fill="none"/>
-      <path d="M33.5 13.5C34 7 41 3.5 47 5.5 46 12 40 15.5 33.5 13.5Z" fill="#8FAE5D"/>
-    </symbol>
-    <symbol id="fruit-manzana" viewBox="0 0 64 64">
-      <path d="M32 19C27 11 13 10 8.5 20.5 4 31 10.5 47 20.5 54c4.5 3 8.5.5 11.5-2 3 2.5 7 5 11.5 2C53.5 47 60 31 55.5 20.5 51 10 37 11 32 19Z" fill="#C1292E"/>
-      <path d="M15 27c-.8 4 0 9 2 13" stroke="#C7D98C" stroke-width="3" stroke-linecap="round" fill="none"/>
-      <path d="M32 17c-.5-5 .5-9 3-12" stroke="#7A5C3E" stroke-width="2.6" stroke-linecap="round" fill="none"/>
-      <path d="M36 8.5c2.5-4 9.5-4.5 12.5-1.5-2 4.5-9 6-12.5 1.5Z" fill="#8FAE5D"/>
-    </symbol>
-    <symbol id="fruit-frutilla" viewBox="0 0 64 64">
-      <path d="M32 58C20 50 7.5 37.5 9.5 26.5 11 18.5 21 15 32 21.5 43 15 53 18.5 54.5 26.5 56.5 37.5 44 50 32 58Z" fill="#E26D5C"/>
-      <g fill="#F8E3C8">
-        <ellipse cx="23" cy="33" rx="1.7" ry="2.6"/><ellipse cx="41" cy="33" rx="1.7" ry="2.6"/>
-        <ellipse cx="32" cy="28" rx="1.7" ry="2.6"/><ellipse cx="32" cy="43" rx="1.7" ry="2.6"/>
-        <ellipse cx="21" cy="44" rx="1.5" ry="2.3"/><ellipse cx="43" cy="44" rx="1.5" ry="2.3"/>
-      </g>
-      <g fill="#6E9B4D">
-        <path d="M32 24C28 16 20 13 13 15c3 7 11 10 19 9Z"/>
-        <path d="M32 24c4-8 12-11 19-9-3 7-11 10-19 9Z"/>
-        <path d="M32 24c-1-6 1-12 4-15 2 6 0 12-4 15Z"/>
-      </g>
-    </symbol>
-    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-7-7 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5m6-7-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 3v4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  </svg>
+    <!-- Contenedor principal de la SPA -->
+    <div id="app" class="relative max-w-md mx-auto min-h-screen">
 
-  <!-- ============ VISTA 1 · LANDING / SELECCIÓN ============ -->
-  <main id="view-landing" class="min-h-dvh flex flex-col max-w-md mx-auto px-5 pt-12 pb-8">
+        <!-- ===================== VISTA 1: LANDING ===================== -->
+        <section id="vista-landing" class="vista vista-visible px-7 pt-12 pb-10 min-h-screen flex flex-col" aria-label="Selección de sabor">
 
-    <header>
-      <p class="text-[11px] uppercase tracking-[0.3em] text-stone-400 font-medium">Mermeladas artesanales</p>
-      <h1 class="font-display text-6xl sm:text-7xl leading-none mt-3 text-stone-900">Néctar</h1>
-      <p class="font-display italic text-xl text-stone-500 mt-3">Simple, Natural <span class="text-stone-800 not-italic font-medium">y nuestro</span></p>
-      <div class="flex gap-1.5 mt-5" aria-hidden="true">
-        <span class="dot-brand w-1.5 h-1.5 rounded-full" style="background:#E8944A"></span>
-        <span class="dot-brand w-1.5 h-1.5 rounded-full" style="background:#C1292E"></span>
-        <span class="dot-brand w-1.5 h-1.5 rounded-full" style="background:#E26D5C"></span>
-      </div>
-    </header>
+            <!-- Logo (reemplazá src="logo.png" por la ruta de tu archivo) -->
+            <div class="flex justify-center mb-5 anim-entrada ret-1">
+                <img src="logo.png" alt="Logo Néctar" class="w-28 h-auto object-contain">
+            </div>
 
-    <section class="mt-14">
-      <h2 class="font-display text-[26px] leading-tight text-stone-900">¿Qué sabor compraste?</h2>
-      <p class="text-[15px] text-stone-500 mt-1">Elegilo para ver los detalles.</p>
-    </section>
+            <!-- Marca y slogan -->
+            <header class="text-center mb-auto anim-entrada ret-2">
+                <h1 class="font-display text-[3.2rem] font-bold text-warm-700 tracking-tight leading-none mb-3">
+                    Néctar
+                </h1>
+                <p class="text-warm-400 text-[0.95rem] font-light tracking-wide">
+                    Simple, Natural y nuestro
+                </p>
+            </header>
 
-    <nav class="mt-5 border border-stone-200/90 rounded-3xl bg-white/60 divide-y divide-stone-200/70 overflow-hidden">
-      <button class="flavor-btn w-full flex items-center gap-4 px-5 py-5 text-left" data-flavor="durazno" style="--btn-accent:#B85C2E">
-        <span class="w-14 h-14 rounded-full grid place-items-center shrink-0" style="background:#FBE7CE">
-          <svg class="w-9 h-9"><use href="#fruit-durazno"/></svg>
-        </span>
-        <span class="flex-1 min-w-0">
-          <span class="block font-display text-[22px] leading-tight text-stone-900">Durazno</span>
-          <span class="block text-[13px] text-stone-500 mt-0.5">Dulce, perfumado, de temporada.</span>
-        </span>
-        <svg class="go w-5 h-5 shrink-0"><use href="#i-arrow"/></svg>
-      </button>
+            <!-- Texto indicativo -->
+            <p class="text-center text-warm-400 text-sm leading-relaxed max-w-[280px] mx-auto mb-9 anim-entrada ret-3">
+                ¿Qué sabor tenés? Elegilo para ver los detalles.
+            </p>
 
-      <button class="flavor-btn w-full flex items-center gap-4 px-5 py-5 text-left" data-flavor="manzana" style="--btn-accent:#A82020">
-        <span class="w-14 h-14 rounded-full grid place-items-center shrink-0" style="background:#FDECEC">
-          <svg class="w-9 h-9"><use href="#fruit-manzana"/></svg>
-        </span>
-        <span class="flex-1 min-w-0">
-          <span class="block font-display text-[22px] leading-tight text-stone-900">Manzana</span>
-          <span class="block text-[13px] text-stone-500 mt-0.5">Suave, dorada, con canela.</span>
-        </span>
-        <svg class="go w-5 h-5 shrink-0"><use href="#i-arrow"/></svg>
-      </button>
+            <!-- Botones de selección de sabor -->
+            <nav class="flex flex-col gap-3.5 anim-entrada ret-4" aria-label="Sabores disponibles">
 
-      <button class="flavor-btn w-full flex items-center gap-4 px-5 py-5 text-left" data-flavor="frutilla" style="--btn-accent:#BC4440">
-        <span class="w-14 h-14 rounded-full grid place-items-center shrink-0" style="background:#FAE0DC">
-          <svg class="w-9 h-9"><use href="#fruit-frutilla"/></svg>
-        </span>
-        <span class="flex-1 min-w-0">
-          <span class="block font-display text-[22px] leading-tight text-stone-900">Frutilla</span>
-          <span class="block text-[13px] text-stone-500 mt-0.5">Intensa, brillante, con trozos.</span>
-        </span>
-        <svg class="go w-5 h-5 shrink-0"><use href="#i-arrow"/></svg>
-      </button>
-    </nav>
+                <!-- Durazno -->
+                <button
+                    class="btn-sabor flex items-center gap-4 px-5 py-[18px] rounded-2xl shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-300 focus-visible:ring-offset-2"
+                    style="background-color:#FDF3EA; --tw-ring-offset-color:#FDFBF7;"
+                    onclick="mostrarDetalle('durazno')"
+                    aria-label="Ver mermelada de durazno"
+                >
+                    <span class="text-[1.75rem] leading-none flex-shrink-0">🍑</span>
+                    <span class="text-lg font-medium text-warm-700 flex-1 text-left">Durazno</span>
+                    <svg class="w-5 h-5 text-warm-300 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
 
-    <footer class="mt-auto pt-12 text-center text-xs text-stone-400">
-      Hecho a mano, como nuestras mermeladas · Proyecto escolar
-    </footer>
-  </main>
+                <!-- Manzana -->
+                <button
+                    class="btn-sabor flex items-center gap-4 px-5 py-[18px] rounded-2xl shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-300 focus-visible:ring-offset-2"
+                    style="background-color:#EEF6F1; --tw-ring-offset-color:#FDFBF7;"
+                    onclick="mostrarDetalle('manzana')"
+                    aria-label="Ver mermelada de manzana"
+                >
+                    <span class="text-[1.75rem] leading-none flex-shrink-0">🍎</span>
+                    <span class="text-lg font-medium text-warm-700 flex-1 text-left">Manzana</span>
+                    <svg class="w-5 h-5 text-warm-300 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
 
-  <!-- ============ VISTA 2 · DETALLE DEL PRODUCTO Y 3D ============ -->
-  <main id="view-detail" class="hidden min-h-dvh max-w-md mx-auto">
+                <!-- Frutilla -->
+                <button
+                    class="btn-sabor flex items-center gap-4 px-5 py-[18px] rounded-2xl shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-300 focus-visible:ring-offset-2"
+                    style="background-color:#FDEEEE; --tw-ring-offset-color:#FDFBF7;"
+                    onclick="mostrarDetalle('frutilla')"
+                    aria-label="Ver mermelada de frutilla"
+                >
+                    <span class="text-[1.75rem] leading-none flex-shrink-0">🍓</span>
+                    <span class="text-lg font-medium text-warm-700 flex-1 text-left">Frutilla</span>
+                    <svg class="w-5 h-5 text-warm-300 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
 
-    <!-- Barra superior -->
-    <div class="sticky top-0 z-20 bg-stone-50/85 backdrop-blur-md">
-      <div class="flex items-center justify-between px-4 py-3">
-        <button id="btn-back" class="flex items-center gap-1.5 text-sm font-medium text-stone-600 px-3 py-2 -ml-3 rounded-full hover:bg-stone-200/60 active:scale-95 transition select-none">
-          <svg class="w-4 h-4"><use href="#i-arrow-left"/></svg>
-          Volver
-        </button>
-        <span class="font-display text-lg text-stone-900">Néctar</span>
-        <span class="w-[72px]" aria-hidden="true"></span>
-      </div>
+            </nav>
+
+            <!-- Pie sutil -->
+            <footer class="text-center mt-auto pt-12 anim-entrada ret-5">
+                <p class="text-warm-300 text-[0.68rem] tracking-[0.18em] uppercase">Mermeladas Artesanales</p>
+            </footer>
+
+        </section>
+
+        <!-- ===================== VISTA 2: DETALLE ===================== -->
+        <section id="vista-detalle" class="vista vista-oculta px-7 pt-4 pb-12 min-h-screen flex flex-col" aria-label="Detalle de producto">
+
+            <!-- Botón volver -->
+            <button
+                id="btn-volver"
+                class="flex items-center gap-2 mb-4 py-2 px-1 text-sm font-medium transition-colors duration-200 focus:outline-none focus-visible:underline"
+                style="color: var(--accento, #8A8580);"
+                onclick="mostrarLanding()"
+                aria-label="Volver a la selección de sabores"
+            >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                Volver
+            </button>
+
+            <!-- Frasco flotante -->
+            <div class="flex justify-center mb-1 mt-2">
+                <img
+                    id="jar-imagen"
+                    alt="Frasco de mermelada"
+                    class="jar-flotante w-44 h-auto drop-shadow-sm"
+                    src=""
+                    width="176"
+                >
+            </div>
+
+            <!-- Nombre del sabor -->
+            <h2 id="detalle-nombre" class="font-display text-[1.85rem] font-semibold text-center mb-0.5 tracking-tight" style="color: var(--accento, #2D2A26);"></h2>
+            <p class="text-warm-400 text-sm text-center mb-9 font-light">Mermelada Artesanal</p>
+
+            <!-- Acordeones (solo Nutricional e Ingredientes) -->
+            <div class="w-full max-w-sm mx-auto" style="--accento: var(--accento, #2D2A26);">
+
+                <details>
+                    <summary>Información Nutricional</summary>
+                    <div id="acc-nutri" class="pb-5"></div>
+                </details>
+
+                <details>
+                    <summary>Ingredientes</summary>
+                    <div id="acc-ingre" class="pb-5"></div>
+                </details>
+
+            </div>
+
+            <!-- Pie con logo chico -->
+            <div class="mt-auto pt-10 flex flex-col items-center gap-2">
+                <img src="logo.png" alt="Logo Néctar" class="w-14 h-auto object-contain opacity-60">
+                <p class="text-warm-300 text-[0.68rem] tracking-[0.18em] uppercase">Néctar</p>
+            </div>
+
+        </section>
+
     </div>
 
-    <div class="px-5 pb-12">
-      <header class="pt-3">
-        <div class="flex items-center gap-2.5 flex-wrap">
-          <p class="text-[11px] uppercase tracking-[0.28em] text-stone-400 font-medium">Mermelada artesanal</p>
-          <span class="chip inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wide px-2.5 py-1 rounded-full">
-            <span class="w-1.5 h-1.5 rounded-full" style="background:var(--accent-mid)"></span>
-            100% natural
-          </span>
-        </div>
-        <h1 class="font-display text-[44px] leading-none mt-2.5 text-stone-900" id="d-nombre">—</h1>
-        <p class="font-display italic text-lg text-stone-500 mt-2" id="d-tagline"></p>
-        <p class="text-[15px] text-stone-600 leading-relaxed mt-3" id="d-desc"></p>
-      </header>
+    <!-- ===================== JAVASCRIPT ===================== -->
+    <script>
+        // ──────────────────────────────────────────────
+        // Base de datos de sabores
+        // ──────────────────────────────────────────────
+        const sabores = {
+            durazno: {
+                nombre: 'Durazno',
+                colorAcento: '#C47D3A',
+                colorAcentoClaro: '#FDF3EA',
+                colorJar: '#E8A87C',
+                colorJarOscuro: '#B87A4E',
+                nutricional: [
+                    ['Porción', '20 g (1 cda)'],
+                    ['Calorías', '48 kcal'],
+                    ['Carbohidratos', '12 g'],
+                    ['Azúcares', '10 g'],
+                    ['Fibra', '0.3 g'],
+                    ['Sodio', '5 mg'],
+                ],
+                ingredientes: [
+                    'Lata de durazno',
+                    'Azúcar',
+                    'Jugo de limón',
+                    'Pectina natural (de manzana)',
+                ],
+            },
+            manzana: {
+                nombre: 'Manzana',
+                colorAcento: '#527D5E',
+                colorAcentoClaro: '#EEF6F1',
+                colorJar: '#CDA24E',
+                colorJarOscuro: '#A67C2E',
+                nutricional: [
+                    ['Porción', '20 g (1 cda)'],
+                    ['Calorías', '42 kcal'],
+                    ['Carbohidratos', '11 g'],
+                    ['Azúcares', '9 g'],
+                    ['Fibra', '0.5 g'],
+                    ['Sodio', '3 mg'],
+                ],
+                ingredientes: [
+                    'Manzanas rojas frescas',
+                    'Azúcar',
+                    'Jugo de limón',
+                    'Canela molida (una pizca)',
+                    'Pectina natural',
+                ],
+            },
+            frutilla: {
+                nombre: 'Frutilla',
+                colorAcento: '#B84E47',
+                colorAcentoClaro: '#FDEEEE',
+                colorJar: '#D4726A',
+                colorJarOscuro: '#B84E47',
+                nutricional: [
+                    ['Porción', '20 g (1 cda)'],
+                    ['Calorías', '45 kcal'],
+                    ['Carbohidratos', '11.5 g'],
+                    ['Azúcares', '10 g'],
+                    ['Fibra', '0.4 g'],
+                    ['Sodio', '4 mg'],
+                ],
+                ingredientes: [
+                    'Frutillas frescas',
+                    'Azúcar',
+                    'Jugo de limón',
+                    'Pectina natural',
+                ],
+            },
+        };
 
-      <!-- Visor 3D -->
-      <figure class="mt-3">
-        <div class="relative">
-          <!-- "Plato" de color bajo el frasco: tiñe la escena con el sabor -->
-          <div class="plate absolute left-1/2 -translate-x-1/2 bottom-3 w-52 h-52 sm:w-60 sm:h-60 rounded-full" aria-hidden="true"></div>
+        // ──────────────────────────────────────────────
+        // Generador de SVG del frasco (plano y minimal)
+        // ──────────────────────────────────────────────
+        function generarJarSVG(key) {
+            const s = sabores[key];
 
-          <model-viewer id="frasco"
-            src="frasco.glb"
-            alt="Frasco de mermelada Néctar en 3D"
-            camera-controls
-            auto-rotate
-            auto-rotate-delay="1200"
-            shadow-intensity="1"
-            camera-orbit="0deg 72deg auto"
-            interaction-prompt="basic"
-            ar
-            ar-modes="webxr scene-viewer"
-            style="width:100%; height:380px; --poster-color:transparent; --progress-bar-color:transparent;">
-          </model-viewer>
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" width="200" height="280">
+                <!-- Sombra proyectada -->
+                <ellipse cx="100" cy="268" rx="50" ry="6" fill="#E0DCD5" opacity="0.45"/>
 
-          <!-- Estado: cargando -->
-          <div id="mv-status" class="absolute inset-0 grid place-items-center pointer-events-none">
-            <div class="flex flex-col items-center gap-3">
-              <div class="w-8 h-8 rounded-full border-2 border-stone-300 border-t-stone-500 animate-spin"></div>
-              <span class="text-[11px] uppercase tracking-[0.25em] text-stone-400">Preparando el frasco…</span>
-            </div>
-          </div>
+                <!-- Cuerpo del frasco -->
+                <path d="M64 86 L56 244 Q56 260 73 260 L127 260 Q144 260 144 244 L136 86 Z"
+                      fill="#FFFFFF" stroke="#DDD8D0" stroke-width="1.2" stroke-linejoin="round"/>
 
-          <!-- Estado: error (frasco.glb no encontrado) -->
-          <div id="mv-error" class="hidden absolute inset-0 grid place-items-center px-6">
-            <div class="text-center max-w-xs">
-              <svg class="w-8 h-8 mx-auto text-stone-400"><use href="#i-alert"/></svg>
-              <p class="font-display text-lg text-stone-800 mt-3">No pudimos cargar el frasco 3D</p>
-              <p class="text-[13px] text-stone-500 leading-relaxed mt-1.5">Asegurate de que el archivo <span class="font-semibold text-stone-700">frasco.glb</span> esté en la misma carpeta que este <span class="font-semibold text-stone-700">index.html</span>.</p>
-              <button id="btn-retry" class="mt-4 text-[13px] font-medium text-stone-700 border border-stone-300 rounded-full px-4 py-2 hover:bg-white active:scale-95 transition">Reintentar</button>
-            </div>
-          </div>
-        </div>
-        <figcaption class="mt-2 flex items-center justify-center gap-2 text-stone-400">
-          <svg class="w-4 h-4"><use href="#i-rotate"/></svg>
-          <span class="text-xs tracking-wide">Girá el frasco con el dedo · pellizcá para acercar</span>
-        </figcaption>
-      </figure>
+                <!-- Brillo de vidrio (costado izquierdo) -->
+                <path d="M68 90 L62 240 Q62 253 74 254 L79 254 L82 90 Z"
+                      fill="#FFFFFF" opacity="0.55"/>
 
-      <!-- Acordeones de información -->
-      <section class="mt-7 border-t border-stone-200">
-        <details class="group border-b border-stone-200">
-          <summary class="flex items-center justify-between py-4 px-1 active:opacity-60 transition">
-            <span class="font-display text-lg text-stone-900">Información nutricional</span>
-            <svg class="chev w-5 h-5 text-stone-400 shrink-0"><use href="#i-chev"/></svg>
-          </summary>
-          <div class="acc-body pb-5 px-1" id="acc-nutricion"></div>
-        </details>
+                <!-- Tapa metálica -->
+                <rect x="58" y="66" width="84" height="24" rx="5" fill="#C5BFB5"/>
+                <rect x="62" y="62" width="76" height="8" rx="3.5" fill="#D4CEC4"/>
+                <line x1="66" y1="70" x2="134" y2="70" stroke="#B8B2A8" stroke-width="0.7"/>
 
-        <details class="group border-b border-stone-200">
-          <summary class="flex items-center justify-between py-4 px-1 active:opacity-60 transition">
-            <span class="font-display text-lg text-stone-900">Ingredientes</span>
-            <svg class="chev w-5 h-5 text-stone-400 shrink-0"><use href="#i-chev"/></svg>
-          </summary>
-          <div class="acc-body pb-5 px-1" id="acc-ingredientes"></div>
-        </details>
+                <!-- Mermelada (relleno de color) -->
+                <path d="M64 152 L60 244 Q60 256 74 257 L126 257 Q140 256 140 244 L136 152 Z"
+                      fill="${s.colorJar}"/>
 
-        <details class="group border-b border-stone-200">
-          <summary class="flex items-center justify-between py-4 px-1 active:opacity-60 transition">
-            <span class="font-display text-lg text-stone-900">Proceso de elaboración</span>
-            <svg class="chev w-5 h-5 text-stone-400 shrink-0"><use href="#i-chev"/></svg>
-          </summary>
-          <div class="acc-body pb-5 px-1" id="acc-proceso"></div>
-        </details>
-      </section>
+                <!-- Reflejo sobre la mermelada -->
+                <path d="M68 157 L65 238 Q65 250 76 251 L80 251 L83 157 Z"
+                      fill="#FFFFFF" opacity="0.16"/>
 
-      <footer class="mt-12 text-center">
-        <p class="font-display italic text-stone-400">Simple, Natural y nuestro</p>
-      </footer>
-    </div>
-  </main>
+                <!-- Etiqueta rectangular -->
+                <rect x="72" y="172" width="56" height="50" rx="3.5" fill="#FFFFFF" opacity="0.93"/>
+                <rect x="72" y="172" width="56" height="50" rx="3.5" fill="none" stroke="#EAE6DF" stroke-width="0.7"/>
 
-  <!-- Contenedor de toasts -->
-  <div id="toasts" class="fixed bottom-5 inset-x-0 z-50 px-4 flex flex-col items-center gap-2 pointer-events-none"></div>
+                <!-- Texto de la etiqueta -->
+                <text x="100" y="193" text-anchor="middle"
+                      font-family="'Playfair Display',serif" font-size="13.5" font-weight="600"
+                      fill="#2D2A26">Néctar</text>
+                <line x1="84" y1="199" x2="116" y2="199" stroke="#EAE6DF" stroke-width="0.7"/>
+                <text x="100" y="214" text-anchor="middle"
+                      font-family="'DM Sans',sans-serif" font-size="9.5" font-weight="400"
+                      fill="${s.colorJarOscuro}">${s.nombre}</text>
+            </svg>`;
 
-  <script>
-    const $ = (s, c = document) => c.querySelector(s);
+            return 'data:image/svg+xml,' + encodeURIComponent(svg);
+        }
 
-    const SABORES = {
-      durazno: {
-        nombre: 'Durazno',
-        tagline: 'Dulce, perfumado, de temporada.',
-        descripcion: 'Duraznos maduros cosechados en su punto exacto, cocidos en lotes pequeños para conservar todo el perfume del verano.',
-        color: '#E8944A', acento: '#B85C2E', suave: '#FBE7CE',
-        filtro: 'hue-rotate(45deg)', 
-        ingredientes: ['Duraznos maduros (65%)', 'Azúcar orgánica de caña', 'Jugo de limón fresco'],
-        nutricion: [
-          ['Energía', '238 kcal'], ['Carbohidratos', '56 g'], ['Azúcares', '51 g'],
-          ['Grasas', '0,2 g'], ['Proteínas', '0,9 g'], ['Fibra', '1,9 g'], ['Sodio', '4 mg'],
-        ],
-        proceso: [
-          'Elegimos los duraznos uno por uno, bien maduros, de estación.',
-          'Los pelamos y cortamos a mano, en trozos grandes.',
-          'Cocinamos a fuego bajo con limón, sin apurar el hervor.',
-          'Envasamos en caliente y sellamos cada frasco a mano.',
-        ],
-      },
-      manzana: {
-        nombre: 'Manzana',
-        tagline: 'Suave, clásica, con canela.',
-        descripcion: 'Manzanas rojas frescas y un toque de canela de Ceylán: el equilibrio justo entre lo dulce y lo ácido.',
-        color: '#C13A31', acento: '#8C2A22', suave: '#F5E1DC',
-        filtro: 'hue-rotate(-20deg) brightness(0.85) contrast(1.1)', 
-        ingredientes: ['Manzanas rojas (70%)', 'Azúcar orgánica de caña', 'Canela de Ceylán', 'Jugo de limón fresco'],
-        nutricion: [
-          ['Energía', '216 kcal'], ['Carbohidratos', '52 g'], ['Azúcares', '46 g'],
-          ['Grasas', '0,1 g'], ['Proteínas', '0,3 g'], ['Fibra', '1,4 g'], ['Sodio', '3 mg'],
-        ],
-        proceso: [
-          'Pelamos manzanas rojas y las rallamos gruesas.',
-          'Las dejamos reposar con azúcar y canela toda la noche.',
-          'Cocinamos a fuego suave hasta el punto justo.',
-          'Envasamos en caliente y sellamos cada frasco a mano.',
-        ],
-      },
-      frutilla: {
-        nombre: 'Frutilla',
-        tagline: 'Intensa, brillante, con trozos.',
-        descripcion: 'Frutillas maceradas horas antes de la olla, para que cada cucharada tenga trozos reales y un rojo que se ve desde afuera.',
-        color: '#E25B54', acento: '#BC4440', suave: '#FAE0DC',
-        filtro: 'hue-rotate(0deg)', 
-        ingredientes: ['Frutillas (60%)', 'Azúcar orgánica de caña', 'Jugo de limón fresco'],
-        nutricion: [
-          ['Energía', '224 kcal'], ['Carbohidratos', '54 g'], ['Azúcares', '49 g'],
-          ['Grasas', '0,3 g'], ['Proteínas', '0,8 g'], ['Fibra', '1,6 g'], ['Sodio', '5 mg'],
-        ],
-        proceso: [
-          'Desbrozamos las frutillas una por una, sin lavarlas de más.',
-          'Las maceramos con azúcar y limón durante varias horas.',
-          'Cocinamos en lotes chicos, cinco minutos exactos.',
-          'Envasamos en caliente y sellamos cada frasco a mano.',
-        ],
-      },
-    };
+        // ──────────────────────────────────────────────
+        // Referencias a las vistas
+        // ──────────────────────────────────────────────
+        const vistaLanding  = document.getElementById('vista-landing');
+        const vistaDetalle  = document.getElementById('vista-detalle');
+        let vistaActual     = 'landing';
 
-    const viewLanding = $('#view-landing');
-    const viewDetail  = $('#view-detail');
-    const mv          = $('#frasco');
+        // ──────────────────────────────────────────────
+        // Mostrar vista de detalle
+        // ──────────────────────────────────────────────
+        function mostrarDetalle(key) {
+            const s = sabores[key];
+            if (!s || vistaActual === 'detalle') return;
 
-    mv.addEventListener('load', () => {
-      $('#mv-status').classList.add('hidden');
-      $('#mv-error').classList.add('hidden');
-    });
-    mv.addEventListener('error', () => {
-      $('#mv-status').classList.add('hidden');
-      $('#mv-error').classList.remove('hidden');
-    });
-    $('#btn-retry').addEventListener('click', () => location.reload());
+            // 1. Aplicar color de acento global (CSS custom property)
+            document.documentElement.style.setProperty('--accento', s.colorAcento);
 
-    function showView(el) {
-      [viewLanding, viewDetail].forEach(v => v.classList.add('hidden'));
-      el.classList.remove('hidden');
-      el.classList.remove('view-enter');
-      void el.offsetWidth;
-      el.classList.add('view-enter');
-    }
+            // 2. Fondo sutil degradado superior en la vista detalle
+            vistaDetalle.style.background =
+                `radial-gradient(ellipse 80% 50% at 50% 0%, ${s.colorAcentoClaro} 0%, #FDFBF7 70%)`;
 
-    const renderNutricion = rows => `
-      <p class="text-[11px] uppercase tracking-[0.2em] text-stone-400 mb-2">Aproximados por cada 100 g</p>
-      <div class="divide-y divide-stone-100">
-        ${rows.map(([k, v]) => `
-          <div class="flex items-baseline justify-between py-2.5">
-            <span class="text-[15px] text-stone-600">${k}</span>
-            <span class="font-display text-[15px] text-stone-800">${v}</span>
-          </div>`).join('')}
-      </div>`;
+            // 3. Imagen del frasco
+            const img = document.getElementById('jar-imagen');
+            img.src = generarJarSVG(key);
+            img.alt = 'Frasco de mermelada de ' + s.nombre;
 
-    const renderIngredientes = list => `
-      <p class="font-display text-[17px] leading-snug text-stone-800">Fruta de verdad:
-        <span class="hl font-semibold">100% natural</span>, sin conservantes ni colorantes.</p>
-      <ul class="mt-4 space-y-2.5">
-        ${list.map(i => `
-          <li class="flex items-start gap-2.5 text-[15px] text-stone-600">
-            <svg class="w-4 h-4 mt-[3px] shrink-0" style="color:var(--accent-mid)"><use href="#i-check"/></svg>
-            <span>${i}</span>
-          </li>`).join('')}
-      </ul>
-      <p class="mt-3 font-display italic text-sm text-stone-400">Y nada más.</p>`;
+            // 4. Nombre del sabor
+            const nombreEl = document.getElementById('detalle-nombre');
+            nombreEl.textContent = s.nombre;
+            nombreEl.style.color = s.colorAcento;
 
-    const renderProceso = pasos => `
-      <ol class="space-y-4">
-        ${pasos.map((p, i) => `
-          <li class="flex gap-4">
-            <span class="step-no text-xl leading-none pt-0.5 w-7 shrink-0">${String(i + 1).padStart(2, '0')}</span>
-            <span class="text-[15px] text-stone-600 leading-relaxed">${p}</span>
-          </li>`).join('')}
-      </ol>`;
+            // 5. Botón volver
+            document.getElementById('btn-volver').style.color = s.colorAcento;
 
-    function openFlavor(key) {
-      const s = SABORES[key];
-      navigator.vibrate?.(12);
+            // 6. Inyectar tabla nutricional
+            let tHTML = '<table class="tabla-nutri">';
+            s.nutricional.forEach(function(fila) {
+                tHTML += '<tr><td>' + fila[0] + '</td><td>' + fila[1] + '</td></tr>';
+            });
+            tHTML += '</table>';
+            document.getElementById('acc-nutri').innerHTML = tHTML;
 
-      viewDetail.style.setProperty('--accent', s.acento);
-      viewDetail.style.setProperty('--accent-mid', s.color);
-      viewDetail.style.setProperty('--accent-soft', s.suave);
+            // 7. Inyectar ingredientes
+            let iHTML = '<ul class="space-y-2.5">';
+            s.ingredientes.forEach(function(ing) {
+                iHTML += '<li class="flex items-start gap-3 text-sm text-warm-400">'
+                       + '<span class="w-1.5 h-1.5 rounded-full mt-[7px] flex-shrink-0" style="background-color:' + s.colorAcento + '"></span>'
+                       + ing + '</li>';
+            });
+            iHTML += '</ul>';
+            document.getElementById('acc-ingre').innerHTML = iHTML;
 
-      $('#d-nombre').textContent  = s.nombre;
-      $('#d-tagline').textContent = s.tagline;
-      $('#d-desc').textContent    = s.descripcion;
-      document.querySelectorAll('#view-detail details').forEach(d => d.open = false);
-      $('#acc-nutricion').innerHTML    = renderNutricion(s.nutricion);
-      $('#acc-ingredientes').innerHTML = renderIngredientes(s.ingredientes);
-      $('#acc-proceso').innerHTML      = renderProceso(s.proceso);
+            // 8. Cerrar acordeones abiertos previamente
+            vistaDetalle.querySelectorAll('details').forEach(function(d) {
+                d.removeAttribute('open');
+            });
 
-      mv.style.transition = 'filter 0.5s ease-in-out';
-      mv.style.filter = s.filtro;
+            // 9. Transición de vistas
+            vistaLanding.classList.remove('vista-visible');
+            vistaLanding.classList.add('vista-oculta');
 
-      showView(viewDetail);
-      window.scrollTo(0, 0);
-    }
+            setTimeout(function() {
+                vistaDetalle.classList.remove('vista-oculta');
+                vistaDetalle.classList.add('vista-visible');
+                window.scrollTo({ top: 0, behavior: 'instant' });
+                vistaActual = 'detalle';
+            }, 160);
+        }
 
-    document.querySelectorAll('.flavor-btn').forEach(b =>
-      b.addEventListener('click', () => openFlavor(b.dataset.flavor)));
+        // ──────────────────────────────────────────────
+        // Volver al landing
+        // ──────────────────────────────────────────────
+        function mostrarLanding() {
+            if (vistaActual !== 'detalle') return;
 
-    $('#btn-back').addEventListener('click', () => showView(viewLanding));
-  </script>
+            vistaDetalle.classList.remove('vista-visible');
+            vistaDetalle.classList.add('vista-oculta');
+
+            setTimeout(function() {
+                vistaLanding.classList.remove('vista-oculta');
+                vistaLanding.classList.add('vista-visible');
+                window.scrollTo({ top: 0, behavior: 'instant' });
+                vistaActual = 'landing';
+            }, 160);
+        }
+    </script>
+
 </body>
 </html>
